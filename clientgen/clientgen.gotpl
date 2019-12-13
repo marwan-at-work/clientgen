@@ -1,0 +1,114 @@
+{{ reserveImport "context"  }}
+{{ reserveImport "net/http"  }}
+
+{{ reserveImport "github.com/machinebox/graphql" }}
+
+// Client forwards queries to the GraphQL server
+type Client interface {
+	// WithQuery returns a new client that overrides any of 
+	// the proceeding Client method requests with the given string
+	WithQuery(s string) Client
+
+	{{ range $field := .QueryRoot.Fields -}}
+		{{- if $field.IsResolver }}
+			{{- $field.GoFieldName}}{{ $field.ShortResolverDeclaration }}
+		{{- end }}
+	{{ end }}
+	{{ range $field := .MutationRoot.Fields -}}
+		{{- if $field.IsResolver }}
+			{{- $field.GoFieldName}}{{ $field.ShortResolverDeclaration }}
+		{{- end }}
+	{{ end }}
+}
+
+type ctxk string
+const headerKey ctxk = "headerKey"
+
+// WithHTTPRequestHeaders stores an http.Header in a context.Context
+func WithHTTPRequestHeaders(ctx context.Context, h http.Header) context.Context {
+	copied := make(http.Header, len(h))
+	for k, vv := range h {
+		if vv == nil {
+			copied[k] = nil
+			continue
+		}
+		copied[k] = make([]string, len(vv))
+		copy(copied[k], vv)
+	}
+
+	return context.WithValue(ctx, headerKey, copied)
+}
+
+// HeaderFromContext returns the embedded header or nil
+func HeaderFromContext(ctx context.Context) http.Header {
+	h, _ := ctx.Value(headerKey).(http.Header)
+	return h
+}
+
+// NewClient returns a new client for the 
+// target schema at the given address
+func NewClient(addr string) Client {
+	gqlc := graphql.NewClient(addr)
+	return &client{gqlc, ""}
+}
+
+type client struct {
+	client *graphql.Client
+	query string
+}
+
+func (c *client) WithQuery(q string) Client {
+	return &client{c.client, q}
+}
+
+{{ $data := . }}
+
+{{ range $field := .QueryRoot.Fields -}}
+	{{- if $field.IsResolver }}
+		func(c *client) {{- $field.GoFieldName}}{{ $field.ShortResolverDeclaration }} {
+			requestQuery := `
+{{ $data.QueryRequest $field "query" }}`
+			if c.query != "" {
+				requestQuery = c.query 
+			}
+			req := graphql.NewRequest(requestQuery)
+			{{ range $field.Args -}}
+			req.Var("{{ .Name }}", {{ .VarName }})
+			{{ end -}}
+			var response struct {
+				{{ $field.GoFieldName }} {{ $data.GoReturnType $field }}
+			}
+			header := HeaderFromContext(ctx)
+			for k := range header {
+				req.Header.Add(k, header.Get(k))
+			}
+			err := c.client.Run(ctx, req, &response)
+			return response.{{ $field.GoFieldName }}, err
+		}
+	{{- end }}
+{{ end }}
+
+{{ range $field := .MutationRoot.Fields -}}
+	{{- if $field.IsResolver }}
+		func(c *client) {{- $field.GoFieldName}}{{ $field.ShortResolverDeclaration }} {
+			requestQuery := `
+{{ $data.QueryRequest $field "query" }}`
+			if c.query != "" {
+				requestQuery = c.query 
+			}
+			req := graphql.NewRequest(requestQuery)
+			{{ range $field.Args -}}
+			req.Var("{{ .Name }}", {{ .VarName }})
+			{{ end -}}
+			var response struct {
+				{{ $field.GoFieldName }} {{ $data.GoReturnType $field }}
+			}
+			header := HeaderFromContext(ctx)
+			for k := range header {
+				req.Header.Add(k, header.Get(k))
+			}
+			err := c.client.Run(ctx, req, &response)
+			return response.{{ $field.GoFieldName }}, err
+		}
+	{{- end }}
+{{ end }}
