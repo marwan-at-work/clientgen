@@ -14,12 +14,13 @@ import (
 var _ plugin.CodeGenerator = &clientgen{}
 
 // New returns a plugin that generates a graphql go client
-func New(dest string) plugin.Plugin {
-	return &clientgen{dest}
+func New(dest, pkgName string) plugin.Plugin {
+	return &clientgen{dest, pkgName}
 }
 
 type clientgen struct {
-	dest string
+	dest    string
+	pkgName string
 }
 
 func (c *clientgen) Name() string {
@@ -27,8 +28,12 @@ func (c *clientgen) Name() string {
 }
 
 func (c *clientgen) GenerateCode(data *codegen.Data) error {
+	pkgName := c.pkgName
+	if pkgName == "" {
+		pkgName = data.Config.Exec.Package
+	}
 	return templates.Render(templates.Options{
-		PackageName:     data.Config.Exec.Package,
+		PackageName:     pkgName,
 		Filename:        c.dest,
 		Data:            &Data{data},
 		GeneratedHeader: true,

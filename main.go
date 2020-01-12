@@ -60,7 +60,7 @@ func run(ctx *cli.Context) error {
 		return fmt.Errorf("error compiling go type information: %v", err)
 	}
 	dest := ctx.String("out")
-	err = clientgen.New(dest).(plugin.CodeGenerator).GenerateCode(data)
+	err = clientgen.New(dest, "").(plugin.CodeGenerator).GenerateCode(data)
 	if err != nil {
 		return fmt.Errorf("error generating go client: %v", err)
 	}
