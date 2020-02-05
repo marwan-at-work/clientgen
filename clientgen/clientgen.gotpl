@@ -9,14 +9,14 @@ type Client interface {
 	// the proceeding Client method requests with the given string
 	WithQuery(s string) Client
 
-    {{- if .HasQuery -}}
+    {{ if .HasQuery -}}
         {{ range $field := .QueryRoot.Fields -}}
             {{- if $field.IsResolver }}
                 {{- $field.GoFieldName}}{{ $field.ShortResolverDeclaration }}
             {{- end }}
         {{ end }}
     {{ end }}
-	{{- if .HasMutation -}}
+	{{ if .HasMutation -}}
         {{ range $field := .MutationRoot.Fields -}}
             {{- if $field.IsResolver }}
                 {{- $field.GoFieldName}}{{ $field.ShortResolverDeclaration }}
@@ -67,52 +67,56 @@ func (c *client) WithQuery(q string) Client {
 
 {{ $data := . }}
 
-{{ range $field := .QueryRoot.Fields -}}
-	{{- if $field.IsResolver }}
-		func(c *client) {{- $field.GoFieldName}}{{ $field.ShortResolverDeclaration }} {
-			requestQuery := `
-{{ $data.QueryRequest $field "query" }}`
-			if c.query != "" {
-				requestQuery = c.query 
-			}
-			req := graphql.NewRequest(requestQuery)
-			{{ range $field.Args -}}
-			req.Var("{{ .Name }}", {{ .VarName }})
-			{{ end -}}
-			var response struct {
-				{{ $field.GoFieldName }} {{ $data.GoReturnType $field }}
-			}
-			header := HeaderFromContext(ctx)
-			for k := range header {
-				req.Header.Add(k, header.Get(k))
-			}
-			err := c.client.Run(ctx, req, &response)
-			return response.{{ $field.GoFieldName }}, err
-		}
-	{{- end }}
-{{ end }}
+{{ if .HasQuery -}}
+    {{ range $field := .QueryRoot.Fields -}}
+        {{- if $field.IsResolver }}
+            func(c *client) {{- $field.GoFieldName}}{{ $field.ShortResolverDeclaration }} {
+                requestQuery := `
+    {{ $data.QueryRequest $field "query" }}`
+                if c.query != "" {
+                    requestQuery = c.query
+                }
+                req := graphql.NewRequest(requestQuery)
+                {{ range $field.Args -}}
+                req.Var("{{ .Name }}", {{ .VarName }})
+                {{ end -}}
+                var response struct {
+                    {{ $field.GoFieldName }} {{ $data.GoReturnType $field }}
+                }
+                header := HeaderFromContext(ctx)
+                for k := range header {
+                    req.Header.Add(k, header.Get(k))
+                }
+                err := c.client.Run(ctx, req, &response)
+                return response.{{ $field.GoFieldName }}, err
+            }
+        {{- end }}
+    {{ end }}
+{{- end -}}
 
-{{ range $field := .MutationRoot.Fields -}}
-	{{- if $field.IsResolver }}
-		func(c *client) {{- $field.GoFieldName}}{{ $field.ShortResolverDeclaration }} {
-			requestQuery := `
-{{ $data.QueryRequest $field "query" }}`
-			if c.query != "" {
-				requestQuery = c.query 
-			}
-			req := graphql.NewRequest(requestQuery)
-			{{ range $field.Args -}}
-			req.Var("{{ .Name }}", {{ .VarName }})
-			{{ end -}}
-			var response struct {
-				{{ $field.GoFieldName }} {{ $data.GoReturnType $field }}
-			}
-			header := HeaderFromContext(ctx)
-			for k := range header {
-				req.Header.Add(k, header.Get(k))
-			}
-			err := c.client.Run(ctx, req, &response)
-			return response.{{ $field.GoFieldName }}, err
-		}
-	{{- end }}
-{{ end }}
+{{ if .HasMutation -}}
+    {{ range $field := .MutationRoot.Fields -}}
+        {{- if $field.IsResolver }}
+            func(c *client) {{- $field.GoFieldName}}{{ $field.ShortResolverDeclaration }} {
+                requestQuery := `
+    {{ $data.QueryRequest $field "query" }}`
+                if c.query != "" {
+                    requestQuery = c.query
+                }
+                req := graphql.NewRequest(requestQuery)
+                {{ range $field.Args -}}
+                req.Var("{{ .Name }}", {{ .VarName }})
+                {{ end -}}
+                var response struct {
+                    {{ $field.GoFieldName }} {{ $data.GoReturnType $field }}
+                }
+                header := HeaderFromContext(ctx)
+                for k := range header {
+                    req.Header.Add(k, header.Get(k))
+                }
+                err := c.client.Run(ctx, req, &response)
+                return response.{{ $field.GoFieldName }}, err
+            }
+        {{- end }}
+    {{ end }}
+{{- end -}}
