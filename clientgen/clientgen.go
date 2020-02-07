@@ -46,14 +46,6 @@ type Data struct {
 	*codegen.Data
 }
 
-func (d Data) HasMutation() bool {
-	return d.MutationRoot != nil
-}
-
-func (d Data) HasQuery() bool {
-	return d.QueryRoot != nil
-}
-
 // QueryRequest returns a string of the query for
 // a mutation or a query field that selects all
 // fields of the return type

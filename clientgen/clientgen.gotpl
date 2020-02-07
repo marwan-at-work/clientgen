@@ -1,7 +1,7 @@
 {{ reserveImport "context"  }}
 {{ reserveImport "net/http"  }}
 
-{{ reserveImport "github.com/machinebox/graphql" }}
+{{ reserveImport "marwan.io/graphql" }}
 
 // Client forwards queries to the GraphQL server
 type Client interface {
@@ -9,20 +9,20 @@ type Client interface {
 	// the proceeding Client method requests with the given string
 	WithQuery(s string) Client
 
-    {{ if .HasQuery -}}
-        {{ range $field := .QueryRoot.Fields -}}
-            {{- if $field.IsResolver }}
-                {{- $field.GoFieldName}}{{ $field.ShortResolverDeclaration }}
-            {{- end }}
-        {{ end }}
+    {{ if .QueryRoot }}
+	{{ range $field := .QueryRoot.Fields -}}
+		{{- if $field.IsResolver }}
+			{{- $field.GoFieldName}}{{ $field.ShortResolverDeclaration }}
+		{{- end }}
+	{{ end }}
     {{ end }}
-	{{ if .HasMutation -}}
-        {{ range $field := .MutationRoot.Fields -}}
-            {{- if $field.IsResolver }}
-                {{- $field.GoFieldName}}{{ $field.ShortResolverDeclaration }}
-            {{- end }}
-        {{ end }}
-     {{ end }}
+    {{ if .MutationRoot }}
+	{{ range $field := .MutationRoot.Fields -}}
+		{{- if $field.IsResolver }}
+			{{- $field.GoFieldName}}{{ $field.ShortResolverDeclaration }}
+		{{- end }}
+	{{ end }}
+    {{ end }}
 }
 
 type ctxk string
@@ -67,56 +67,56 @@ func (c *client) WithQuery(q string) Client {
 
 {{ $data := . }}
 
-{{ if .HasQuery -}}
-    {{ range $field := .QueryRoot.Fields -}}
-        {{- if $field.IsResolver }}
-            func(c *client) {{- $field.GoFieldName}}{{ $field.ShortResolverDeclaration }} {
-                requestQuery := `
-    {{ $data.QueryRequest $field "query" }}`
-                if c.query != "" {
-                    requestQuery = c.query
-                }
-                req := graphql.NewRequest(requestQuery)
-                {{ range $field.Args -}}
-                req.Var("{{ .Name }}", {{ .VarName }})
-                {{ end -}}
-                var response struct {
-                    {{ $field.GoFieldName }} {{ $data.GoReturnType $field }}
-                }
-                header := HeaderFromContext(ctx)
-                for k := range header {
-                    req.Header.Add(k, header.Get(k))
-                }
-                err := c.client.Run(ctx, req, &response)
-                return response.{{ $field.GoFieldName }}, err
-            }
-        {{- end }}
-    {{ end }}
-{{- end -}}
+{{ if .QueryRoot }}
+{{ range $field := .QueryRoot.Fields -}}
+	{{- if $field.IsResolver }}
+		func(c *client) {{- $field.GoFieldName}}{{ $field.ShortResolverDeclaration }} {
+			requestQuery := `
+{{ $data.QueryRequest $field "query" }}`
+			if c.query != "" {
+				requestQuery = c.query 
+			}
+			req := graphql.NewRequest(requestQuery)
+			{{ range $field.Args -}}
+			req.Var("{{ .Name }}", {{ .VarName }})
+			{{ end -}}
+			var response struct {
+				{{ $field.GoFieldName }} {{ $data.GoReturnType $field }}
+			}
+			header := HeaderFromContext(ctx)
+			for k := range header {
+				req.Header.Add(k, header.Get(k))
+			}
+			err := c.client.Run(ctx, req, &response)
+			return response.{{ $field.GoFieldName }}, err
+		}
+	{{- end }}
+{{ end }}
+{{ end }}
 
-{{ if .HasMutation -}}
-    {{ range $field := .MutationRoot.Fields -}}
-        {{- if $field.IsResolver }}
-            func(c *client) {{- $field.GoFieldName}}{{ $field.ShortResolverDeclaration }} {
-                requestQuery := `
-    {{ $data.QueryRequest $field "query" }}`
-                if c.query != "" {
-                    requestQuery = c.query
-                }
-                req := graphql.NewRequest(requestQuery)
-                {{ range $field.Args -}}
-                req.Var("{{ .Name }}", {{ .VarName }})
-                {{ end -}}
-                var response struct {
-                    {{ $field.GoFieldName }} {{ $data.GoReturnType $field }}
-                }
-                header := HeaderFromContext(ctx)
-                for k := range header {
-                    req.Header.Add(k, header.Get(k))
-                }
-                err := c.client.Run(ctx, req, &response)
-                return response.{{ $field.GoFieldName }}, err
-            }
-        {{- end }}
-    {{ end }}
-{{- end -}}
+{{ if .MutationRoot }}
+{{ range $field := .MutationRoot.Fields -}}
+	{{- if $field.IsResolver }}
+		func(c *client) {{- $field.GoFieldName}}{{ $field.ShortResolverDeclaration }} {
+			requestQuery := `
+{{ $data.QueryRequest $field "mutation" }}`
+			if c.query != "" {
+				requestQuery = c.query 
+			}
+			req := graphql.NewRequest(requestQuery)
+			{{ range $field.Args -}}
+			req.Var("{{ .Name }}", {{ .VarName }})
+			{{ end -}}
+			var response struct {
+				{{ $field.GoFieldName }} {{ $data.GoReturnType $field }}
+			}
+			header := HeaderFromContext(ctx)
+			for k := range header {
+				req.Header.Add(k, header.Get(k))
+			}
+			err := c.client.Run(ctx, req, &response)
+			return response.{{ $field.GoFieldName }}, err
+		}
+	{{- end }}
+{{ end }}
+{{ end }}
